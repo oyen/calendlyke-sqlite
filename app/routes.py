@@ -7,15 +7,21 @@ import os
 import re
 import sqlite3
 
+from app import app
+
+from pathlib import Path
+script_path = Path(__file__).parent.parent
+
 dirname = os.path.dirname(__file__)
-db_file = os.path.join(dirname, "db\calendlyke.db")
-connection = sqlite3.connect(db_file)
-
-app = Flask(__name__)
-
+db_file = os.path.join(script_path, "db\calendlyke.db")
 
 def create_connection():
     """create a database connection to a SQLite database"""
+
+    print("*********************************************")
+    print(script_path, db_file)
+    print("*********************************************")
+
     conn = None
     try:
         conn = sqlite3.connect(db_file)
@@ -86,7 +92,7 @@ def add_user():
 def get_schedules(user_id):
     filter = request.args.get("filter")
     isFree = None
-    if(filter is not None and filter == "booked"):
+    if filter is not None and filter == "booked":
         isFree = 0
     print(user_id)
     with create_connection() as conn:
@@ -94,24 +100,26 @@ def get_schedules(user_id):
             cur = conn.cursor()
 
             # only show scheduled slots
-            if(isFree is not None and not isFree):
+            if isFree is not None and not isFree:
                 cur.execute(
-                "SELECT [Date], [Time], [Name], [Email], [Phone], [Notes] from Schedules WHERE [UserId]=? AND [isFree] = 0",
-                (user_id,),
+                    "SELECT [Date], [Time], [Name], [Email], [Phone], [Notes] from Schedules WHERE [UserId]=? AND [isFree] = 0",
+                    (user_id,),
                 )
                 rows = cur.fetchall()
                 results = []
                 for row in rows:
-                    results.append({
-                        "Date": row[0],
-                        "Time": row[1],
-                        "Name": row[2],
-                        "Email": row[3],
-                        "Phone": row[4],
-                        "Notes": row[5]
-                    })
+                    results.append(
+                        {
+                            "Date": row[0],
+                            "Time": row[1],
+                            "Name": row[2],
+                            "Email": row[3],
+                            "Phone": row[4],
+                            "Notes": row[5],
+                        }
+                    )
                 return jsonify(results)
-            
+
             # show all slots for the next 2 weeks
             cur.execute(
                 "SELECT [Date], [Time], [isFree] from Schedules WHERE [UserId]=?",
@@ -197,7 +205,7 @@ def set_schedule(user_id):
                 (user_id, date, time),
             )
             isFree = cur.fetchone()
-            print('isFree', isFree)
+            print("isFree", isFree)
             if isFree is None:
                 cur.execute(
                     "INSERT INTO [Schedules] ([UserId], [Date], [Time], [Name], [Email], [Phone], [Notes], [isFree])"
@@ -253,7 +261,3 @@ def remove_schedule(user_id):
             print(e)
     # always return success to avoid checking if email exists
     return jsonify({"error": "appointment was cancelled"})
-
-
-if __name__ == "__main__":
-    app.run()
